@@ -14,6 +14,7 @@ blockade them. If neither player can accomplish the above game is a draw.'''
     messagebox.showinfo("Help", help_text)  # Display help text in a messagebox
 
 class Board(Frame):
+
     def __init__(self, parent, length, width, background_color="brown", border_thickness=5, border_color="black"): 
         Frame.__init__(self, parent)
         self.parent = parent
