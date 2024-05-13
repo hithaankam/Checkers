@@ -48,7 +48,7 @@ class Board(Frame):
     
     def add_piece(self, position, color):
         x, y = self.get_coordinates(position)
-        piece = Canvas(self, width=self.piece_radius*2, height=self.piece_radius*2, bg=self.background_color, highlightthickness=0)
+        piece = Canvas(self, width=self.piece_radius*2, height=self.piece_radius*2, bg=self.square_color, highlightthickness=0)
         piece.create_oval(0, 0, self.piece_radius*2, self.piece_radius*2, fill=color)
         piece.grid(row=8-x, column=y)  # Corrected row and column indices
         self.pieces[position] = piece
@@ -63,6 +63,7 @@ board_root = Tk()
 board_root.title("CHECKERS")
 board_root.geometry("400x400")
 board_root.minsize(400, 400)
+board_root.maxsize(400, 400)
 
 # Add buttons for help, restart, and exit to the main window
 top_frame = Frame(board_root)
@@ -84,8 +85,8 @@ board = Board(board_root, 8, 8, "light grey", 5, "black")
 board.set_squares()
 
 # Add some pieces to the board
-board.add_piece("a1", "red")
-board.add_piece("b2", "blue")
+board.add_piece("a1", "black")
+board.add_piece("b2", "white")
 
 # Run the Tkinter event loop
 board_root.mainloop()
