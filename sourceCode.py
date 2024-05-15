@@ -1,6 +1,8 @@
-from tkinter import *
+import tkinter as tk
+from PIL import Image, ImageTk
+from tkinter import Frame, Button
 from tkinter import messagebox  # Import messagebox module
-import string
+import os
 
 def help():
     help_text = '''\n● Checkers is a two-player, with a dark square in each player's lower left corner.
@@ -13,10 +15,10 @@ moves first. The pieces (also known as 'men') are arranged as shown on the left.
 blockade them. If neither player can accomplish the above game is a draw.'''
     messagebox.showinfo("Help", help_text)  # Display help text in a messagebox
 
-class Board(Frame):
+class Board(tk.Frame):
 
-    def __init__(self, parent, length, width, background_color="brown", border_thickness=5, border_color="black"): 
-        Frame.__init__(self, parent)
+    def __init__(self, parent, length, width, background_color, border_thickness, border_color):
+        tk.Frame.__init__(self, parent)
         self.parent = parent
         self.length = length
         self.width = width
@@ -24,69 +26,71 @@ class Board(Frame):
         self.border_thickness = border_thickness
         self.border_color = border_color
         self.config(height=1000*self.length, width=1000*self.width, bg=self.background_color, highlightthickness=self.border_thickness, highlightbackground=self.border_color)
-        self.pack(side=BOTTOM)  # Placing the board at the bottom
+        self.pack(side=tk.BOTTOM)
+        
         self.square_color = None
         self.squares = {}
-        self.ranks = string.ascii_lowercase
-        self.pieces = {}  # Dictionary to store pieces
-        self.piece_radius = 20  # Radius of the piece
+        self.ranks = "abcdefgh"
+        self.white_image = None
+        self.black_image = None
+        self.set_squares()
 
-    def set_squares(self): 
+    def set_squares(self):
         for x in range(8):
             for y in range(8):
-                if x % 2 == 0 and y % 2 == 0: 
-                    self.square_color = "tan4" 
-                elif x % 2 == 1 and y % 2 == 1:
+                if (x + y) % 2 == 0:  # Alternating square colors
                     self.square_color = "tan4"
                 else:
                     self.square_color = "burlywood1"
-                    
-                label = Label(self, bg=self.square_color, width=4, height=2)
-                label.grid(row=8-x, column=y)
-                pos = self.ranks[y]+str(x+1)
-                self.squares.setdefault(pos, label)
+
+                B = tk.Button(self, bg=self.square_color, activebackground="lawn green")
+                B.grid(row=8 - x, column=y)
+                pos = self.ranks[y] + str(x + 1)
+                self.squares.setdefault(pos, B)
     
-    def add_piece(self, position, color):
-        x, y = self.get_coordinates(position)
-        piece = Canvas(self, width=self.piece_radius*2, height=self.piece_radius*2, bg=self.square_color, highlightthickness=0)
-        piece.create_oval(0, 0, self.piece_radius*2, self.piece_radius*2, fill=color)
-        piece.grid(row=8-x, column=y)  # Corrected row and column indices
-        self.pieces[position] = piece
+    def load_piece_images(self):
+        # Load white and black piece images
+        white_piece_image_path = os.path.join(os.path.dirname(__file__), "Checkers", "white_piece.png")
+        black_piece_image_path = os.path.join(os.path.dirname(__file__), "Checkers", "black_piece.png")
+        self.white_image = Image.open(white_piece_image_path)
+        self.black_image = Image.open(black_piece_image_path)
 
-    def get_coordinates(self, position):
-        y = ord(position[0]) - ord('a')
-        x = int(position[1]) - 1
-        return x, y
+    def place_pieces(self):
+        for x in range(8):
+            for y in range(8):
+                pos = self.ranks[y] + str(x + 1)
+                if (x + y) % 2 != 0:  # Only on alternate squares
+                    if 0 <= x < 3:  # Place black pieces
+                        piece = ImageTk.PhotoImage(self.black_image)
+                        self.squares[pos].config(image=piece, width=80, height=80)  # Adjust size only for squares with pieces
+                        self.squares[pos].image = piece
+                    elif 5 <= x < 8:  # Place white pieces
+                        piece = ImageTk.PhotoImage(self.white_image)
+                        self.squares[pos].config(image=piece, width=80, height=80)  # Adjust size only for squares with pieces
+                        self.squares[pos].image = piece
+                    else:
+                        self.squares[pos].config(width=11, height=5) 
+                else:
+                    self.squares[pos].config(width=11, height=5)  # Maintain square size for empty squares
 
-# Create the Tkinter window
-board_root = Tk()
-board_root.title("CHECKERS")
-board_root.geometry("400x400")
-board_root.minsize(400, 400)
-board_root.maxsize(400, 400)
+root = tk.Tk()
+root.title("Checkers Game")
 
 # Add buttons for help, restart, and exit to the main window
-top_frame = Frame(board_root)
-top_frame.pack(side=TOP)
+top_frame = Frame(root)
+top_frame.pack(side=tk.TOP)
 
 restart_button = Button(top_frame, fg="blue", text="Restart")
-restart_button.pack(side=LEFT)
+restart_button.pack(side=tk.LEFT)
 
 help_button = Button(top_frame, fg="blue", text="Help", command=help)
-help_button.pack(side=LEFT)
+help_button.pack(side=tk.LEFT)
 
-exit_button = Button(top_frame, fg="red", text="Exit", command=board_root.quit)
-exit_button.pack(side=RIGHT)
+exit_button = Button(top_frame, fg="red", text="Exit", command=root.quit)
+exit_button.pack(side=tk.RIGHT)
 
-# Create an instance of the Board class with a light grey background color and a thick black border
-board = Board(board_root, 8, 8, "light grey", 5, "black")
 
-# Call the set_squares() method to populate the board with squares/buttons
-board.set_squares()
-
-# Add some pieces to the board
-board.add_piece("a1", "black")
-board.add_piece("b2", "white")
-
-# Run the Tkinter event loop
-board_root.mainloop()
+board = Board(root, 8, 8, "light grey", 5, "black")
+board.load_piece_images()
+board.place_pieces()
+root.mainloop()
