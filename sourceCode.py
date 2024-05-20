@@ -2,7 +2,36 @@ import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import Frame, Button
 from tkinter import messagebox  # Import messagebox module
+from minimax.algorithm import minimax
 import os
+
+fps = 60
+HEIGHT = 8000
+WIDTH = 8000
+ROWS = 8
+COLS = 8
+SQUARE_SIZE = WIDTH // COLS
+
+def get_row_col_from_mouse(pos):
+    x, y = pos
+    row = y // SQUARE_SIZE
+    col = x // SQUARE_SIZE
+    return row, col
+class Piece:
+    def __init__(self, color, row, col, king=False):
+        self.color = color
+        self.row = row
+        self.col = col
+        self.king = king
+
+    def make_king(self):
+        self.king = True
+
+    def move(self, row, col):
+        self.row = row
+        self.col = col
+        self.calc_pos()
+
 
 def help():
     help_text = '''\n● Checkers is a two-player, with a dark square in each player's lower left corner.
@@ -30,10 +59,12 @@ class Board(tk.Frame):
         
         self.square_color = None
         self.squares = {}
+        self.pieces = []
         self.ranks = "abcdefgh"
         self.white_image = None
         self.black_image = None
         self.set_squares()
+        self.board = [[None for _ in range(8)] for _ in range(8)]  # 2D array to track pieces
 
     def set_squares(self):
         for x in range(8):
@@ -59,19 +90,43 @@ class Board(tk.Frame):
         for x in range(8):
             for y in range(8):
                 pos = self.ranks[y] + str(x + 1)
-                if (x + y) % 2 != 0:  # Only on alternate squares
-                    if 0 <= x < 3:  # Place black pieces
+                if (x + y) % 2 != 0:
+                    if 0 <= x < 3: 
                         piece = ImageTk.PhotoImage(self.black_image)
-                        self.squares[pos].config(image=piece, width=80, height=80)  # Adjust size only for squares with pieces
+                        self.squares[pos].config(image=piece, width=80, height=80)
                         self.squares[pos].image = piece
+                        self.board[x][y] = Piece("black", x, y)
                     elif 5 <= x < 8:  # Place white pieces
                         piece = ImageTk.PhotoImage(self.white_image)
-                        self.squares[pos].config(image=piece, width=80, height=80)  # Adjust size only for squares with pieces
+                        self.squares[pos].config(image=piece, width=80, height=80)
                         self.squares[pos].image = piece
+                        self.board[x][y] = Piece("white", x, y)
                     else:
                         self.squares[pos].config(width=11, height=5) 
                 else:
-                    self.squares[pos].config(width=11, height=5)  # Maintain square size for empty squares
+                    self.squares[pos].config(width=11, height=5) 
+
+    def move_piece(self, piece, row, col):
+        if piece:
+    
+            self.board[piece.row][piece.col], self.board[row][col] = None, piece
+            piece.move(row, col)
+
+        
+            old_pos = self.ranks[piece.col] + str(piece.row + 1)
+            new_pos = self.ranks[col] + str(row + 1)
+            self.squares[old_pos].config(image='', width=11, height=5)
+            if piece.color == "white":
+                self.squares[new_pos].config(image=ImageTk.PhotoImage(self.white_image), width=80, height=80)
+            else:
+                self.squares[new_pos].config(image=ImageTk.PhotoImage(self.black_image), width=11, height=5)
+
+            
+            if row == 0 or row == 7:
+                piece.make_king()
+    
+    def get_piece(self, row, col):
+        return self.board[row][col]
 
 root = tk.Tk()
 root.title("Checkers Game")
@@ -88,7 +143,6 @@ help_button.pack(side=tk.LEFT)
 
 exit_button = Button(top_frame, fg="red", text="Exit", command=root.quit)
 exit_button.pack(side=tk.RIGHT)
-
 
 board = Board(root, 8, 8, "light grey", 5, "black")
 board.load_piece_images()
