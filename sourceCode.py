@@ -1,40 +1,9 @@
 import tkinter as tk
-from PIL import Image, ImageTk
-from tkinter import Frame, Button
-from tkinter import messagebox  # Import messagebox module
-from minimax.algorithm import minimax
+from tkinter import Frame, Button, messagebox
 import os
 
-fps = 60
-HEIGHT = 8000
-WIDTH = 8000
-ROWS = 8
-COLS = 8
-SQUARE_SIZE = WIDTH // COLS
-
-def get_row_col_from_mouse(pos):
-    x, y = pos
-    row = y // SQUARE_SIZE
-    col = x // SQUARE_SIZE
-    return row, col
-class Piece:
-    def __init__(self, color, row, col, king=False):
-        self.color = color
-        self.row = row
-        self.col = col
-        self.king = king
-
-    def make_king(self):
-        self.king = True
-
-    def move(self, row, col):
-        self.row = row
-        self.col = col
-        self.calc_pos()
-
-
 def help():
-    help_text = '''\n● Checkers is a two-player, with a dark square in each player's lower left corner.
+    help_text = '''\n● Checkers is a two-player game, with a dark square in each player's lower left corner.
 \n● Pieces move only on dark squares which are numbered. Numbers are used to record the
 moves, for example, if Red moves from square 9 to square 13, then it is recorded as:
 9-13.
@@ -42,7 +11,7 @@ moves, for example, if Red moves from square 9 to square 13, then it is recorded
 moves first. The pieces (also known as 'men') are arranged as shown on the left.
 \n● The goal in the checkers game is either to capture all of the opponent's pieces or to
 blockade them. If neither player can accomplish the above game is a draw.'''
-    messagebox.showinfo("Help", help_text)  # Display help text in a messagebox
+    messagebox.showinfo("Help", help_text)
 
 class Board(tk.Frame):
 
@@ -59,83 +28,191 @@ class Board(tk.Frame):
         
         self.square_color = None
         self.squares = {}
-        self.pieces = []
         self.ranks = "abcdefgh"
         self.white_image = None
         self.black_image = None
+        self.selected_piece = None
+        self.turn = "black"  
         self.set_squares()
-        self.board = [[None for _ in range(8)] for _ in range(8)]  # 2D array to track pieces
+        self.turn_label = tk.Label(parent, text="Turn: Black", font=("Arial", 14), bg=background_color)
+        self.turn_label.pack(side=tk.TOP, pady=5)
+
+        self.status_label = tk.Label(parent, text="", font=("Arial", 14), bg=background_color)
+        self.status_label.pack(side=tk.TOP, pady=5)
 
     def set_squares(self):
         for x in range(8):
             for y in range(8):
-                if (x + y) % 2 == 0:  # Alternating square colors
-                    self.square_color = "tan4"
+                if (x + y) % 2 == 0:  
+                    self.square_color = "white"
                 else:
-                    self.square_color = "burlywood1"
+                    self.square_color = "#D0312D"
 
-                B = tk.Button(self, bg=self.square_color, activebackground="lawn green")
+                B = tk.Button(self, bg=self.square_color, activebackground="#ADD8E6", command=lambda row=x, col=y: self.on_button_click(row, col))
                 B.grid(row=8 - x, column=y)
                 pos = self.ranks[y] + str(x + 1)
-                self.squares.setdefault(pos, B)
+                self.squares[pos] = B
     
     def load_piece_images(self):
-        # Load white and black piece images
+
         white_piece_image_path = os.path.join(os.path.dirname(__file__), "Checkers", "white_piece.png")
         black_piece_image_path = os.path.join(os.path.dirname(__file__), "Checkers", "black_piece.png")
-        self.white_image = Image.open(white_piece_image_path)
-        self.black_image = Image.open(black_piece_image_path)
+        self.white_image = tk.PhotoImage(file=white_piece_image_path)
+        self.black_image = tk.PhotoImage(file=black_piece_image_path)
+
 
     def place_pieces(self):
         for x in range(8):
             for y in range(8):
                 pos = self.ranks[y] + str(x + 1)
-                if (x + y) % 2 != 0:
-                    if 0 <= x < 3: 
-                        piece = ImageTk.PhotoImage(self.black_image)
-                        self.squares[pos].config(image=piece, width=80, height=80)
-                        self.squares[pos].image = piece
-                        self.board[x][y] = Piece("black", x, y)
-                    elif 5 <= x < 8:  # Place white pieces
-                        piece = ImageTk.PhotoImage(self.white_image)
-                        self.squares[pos].config(image=piece, width=80, height=80)
-                        self.squares[pos].image = piece
-                        self.board[x][y] = Piece("white", x, y)
+                if (x + y) % 2 == 0:  
+                    if 0 <= x < 3:  
+                        self.squares[pos].config(image=self.black_image, width=80, height=80)
+                        self.squares[pos].piece = "black"
+                    elif 5 <= x < 8:  
+                        self.squares[pos].config(image=self.white_image, width=80, height=80)
+                        self.squares[pos].piece = "white"
                     else:
-                        self.squares[pos].config(width=11, height=5) 
+                        self.squares[pos].config(width=11, height=5)
+                        self.squares[pos].piece = None
                 else:
-                    self.squares[pos].config(width=11, height=5) 
+                    self.squares[pos].config(width=11, height=5)
+                    self.squares[pos].piece = None
 
-    def move_piece(self, piece, row, col):
-        if piece:
+    def on_button_click(self, row, col):
+        pos = self.ranks[col] + str(row + 1)
+        if self.selected_piece:
+            self.select_square(row, col)
+        elif self.squares[pos].piece and self.squares[pos].piece == self.turn:
+            self.select_piece(row, col)
+
+    def select_piece(self, row, col):
+        pos = self.ranks[col] + str(row + 1)
+        self.selected_piece = pos
+        self.highlight_valid_moves(pos)
+
+    def select_square(self, row, col):
+        pos = self.ranks[col] + str(row + 1)
+        if pos in self.valid_moves:
+            self.move_piece(row, col, pos)
+            self.reset_square_colors()
+            self.selected_piece = None
+            self.valid_moves = {}
+
+    def highlight_valid_moves(self, pos):
+        x, y = int(pos[1]) - 1, self.ranks.index(pos[0])
+        piece = self.squares[pos].piece
+        self.valid_moves = {}
+
+        directions = [(-1, -1), (-1, 1)] if piece == "black" else [(1, -1), (1, 1)]
+        if hasattr(self.squares[pos], 'king') and self.squares[pos].king:
+            directions += [(-d[0], -d[1]) for d in directions]
+
+        for dx, dy in directions:
+            new_x, new_y = x + dx, y + dy
+            if 0 <= new_x < 8 and 0 <= new_y < 8:
+                new_pos = self.ranks[new_y] + str(new_x + 1)
+                if not self.squares[new_pos].piece:
+                    self.squares[new_pos].config(bg="black")
+                    self.valid_moves[new_pos] = "move"
+                else:
+                    capture_x, capture_y = new_x + dx, new_y + dy
+                    if 0 <= capture_x < 8 and 0 <= capture_y < 8:
+                        capture_pos = self.ranks[capture_y] + str(capture_x + 1)
+                        if not self.squares[capture_pos].piece and self.squares[new_pos].piece != piece:
+                            self.squares[capture_pos].config(bg="black")
+                            self.valid_moves[capture_pos] = "capture"
+    def check_win_condition(self):
+        black_pieces = 0
+        white_pieces = 0
+        for pos in self.squares:
+            if self.squares[pos].piece == "black":
+                black_pieces += 1
+            elif self.squares[pos].piece == "white":
+                white_pieces += 1
+        if black_pieces == 0:
+            messagebox.showinfo("Game Over", "White wins! All black pieces captured.")
+            self.reset_board()
+        elif white_pieces == 0:
+            messagebox.showinfo("Game Over", "Black wins! All white pieces captured.")
+            self.reset_board()
+
+    def check_forced_capture(self):
+        forced_captures = False
+        for pos in self.squares:
+            if self.squares[pos].piece == self.turn:
+                self.highlight_valid_moves(pos)
+                if self.valid_moves:
+                    forced_captures = True
+                self.reset_square_colors()
+        return forced_captures
+
+    def switch_turn(self):
+        self.turn = "white" if self.turn == "black" else "black"
+        messagebox.showinfo("Turn", f"It's {self.turn}'s turn.")
+        self.turn_label.config(text=f"Turn: {self.turn.capitalize()}")
+    def check_draw_condition(self):
+        # Check if there are only kings left on the board
+        black_pieces = 0
+        white_pieces = 0
+        for pos in self.squares:
+            if self.squares[pos].piece == "black" or (hasattr(self.squares[pos], 'king') and self.squares[pos].king):
+                black_pieces += 1
+            elif self.squares[pos].piece == "white" or (hasattr(self.squares[pos], 'king') and self.squares[pos].king):
+                white_pieces += 1
+        if black_pieces == 0 and white_pieces == 0:
+            messagebox.showinfo("Game Over", "Draw! No pieces left on the board.")
+            self.reset_board()
+        elif black_pieces == 1 and white_pieces == 1:
+            messagebox.showinfo("Game Over", "Draw! Only kings left on the board.")
+            self.reset_board()
+        self.status_label.config(text="Draw! No pieces left on the board.")
+
+
+
+    def move_piece(self, row, col, new_pos):
+        old_pos = self.selected_piece
+        piece = self.squares[old_pos].piece
+
+        # Check if the piece reaches the opposite end of the board and promote it to a king
+        if (piece == "black" and row == 7) or (piece == "white" and row == 0):
+            self.squares[new_pos].king = True
+            self.draw_king_dot(new_pos, piece)
+
+        self.squares[new_pos].config(image=self.black_image if piece == "black" else self.white_image, width=80, height=80)
+        self.squares[new_pos].piece = piece
+
+        self.squares[old_pos].config(image='', width=11, height=5)
+        self.squares[old_pos].piece = None
+
+        self.selected_piece = None
+        self.check_win_condition()
+        self.check_draw_condition()
+
+
+        if not self.check_forced_capture():
+            self.switch_turn()
     
-            self.board[piece.row][piece.col], self.board[row][col] = None, piece
-            piece.move(row, col)
-
-        
-            old_pos = self.ranks[piece.col] + str(piece.row + 1)
-            new_pos = self.ranks[col] + str(row + 1)
-            self.squares[old_pos].config(image='', width=11, height=5)
-            if piece.color == "white":
-                self.squares[new_pos].config(image=ImageTk.PhotoImage(self.white_image), width=80, height=80)
+    def draw_king_dot(self, pos, piece_color):
+        dot_color = "white" if piece_color == "black" else "black"
+        self.squares[pos].create_oval(30, 30, 50, 50, fill=dot_color)
+    
+    def reset_square_colors(self):
+        for pos in self.squares:
+            x, y = int(pos[1]) - 1, self.ranks.index(pos[0])
+            if (x + y) % 2 == 0:
+                self.squares[pos].config(bg="white")
             else:
-                self.squares[new_pos].config(image=ImageTk.PhotoImage(self.black_image), width=11, height=5)
-
-            
-            if row == 0 or row == 7:
-                piece.make_king()
-    
-    def get_piece(self, row, col):
-        return self.board[row][col]
+                self.squares[pos].config(bg="#D0312D")
 
 root = tk.Tk()
 root.title("Checkers Game")
+root.configure(bg='grey')
 
-# Add buttons for help, restart, and exit to the main window
 top_frame = Frame(root)
 top_frame.pack(side=tk.TOP)
 
-restart_button = Button(top_frame, fg="blue", text="Restart")
+restart_button = Button(top_frame, fg="blue", text="Restart", command=lambda: [board.place_pieces(), board.reset_square_colors()])
 restart_button.pack(side=tk.LEFT)
 
 help_button = Button(top_frame, fg="blue", text="Help", command=help)
