@@ -1,6 +1,58 @@
 import tkinter as tk
+from tkinter import Frame, Button, messagebox, simpledialog, Toplevel
 from PIL import Image, ImageTk
-from tkinter import Frame, Button, messagebox
+import subprocess
+from tkinter import ACTIVE
+from tkinter import LEFT
+import pygame
+import json
+
+pygame.mixer.init()
+
+button_sound = pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\button-click_sound.mp3")
+capture_sound = pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\killing_sound.mp3")
+king_sound = pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\making_king_sound.wav")
+sound=pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\sound.wav")
+class PlayerDialog(simpledialog.Dialog):
+    def body(self, master):
+        dialog_width = 500 
+        dialog_height = 200  
+
+        master.configure(bg="#802000", relief="groove", borderwidth=10)
+       
+        self.minsize(dialog_width, dialog_height)
+        self.maxsize(dialog_width, dialog_height)
+
+        tk.Label(master, text="Player 1:", font=("Helvetica", 20), relief="groove", borderwidth=10).grid(row=0, sticky="w")
+        tk.Label(master, text="Player 2:", font=("Helvetica", 20), relief="groove", borderwidth=10).grid(row=1, sticky="w")
+
+        frame = tk.Frame(master, bg="#802000", relief="groove", borderwidth=10)
+        frame.grid(row=0, column=1, rowspan=2, padx=5, pady=5)
+        self.player1_entry = tk.Entry(frame, font=("Helvetica", 20), bg='white')
+        self.player2_entry = tk.Entry(frame, font=("Helvetica", 20), bg='white')
+
+        self.player1_entry.grid(row=0, column=0, sticky="ew", padx=30, pady=5)
+        self.player2_entry.grid(row=1, column=0, sticky="ew", padx=30, pady=5)
+
+        return self.player1_entry
+    
+    def buttonbox(self):
+        box = Frame(self)
+
+        w = Button(box, text="OK", width=10, font=("Helvetica", 14), command=self.ok, default=ACTIVE)
+        w.pack(side=LEFT, padx=5, pady=5)
+
+        w = Button(box, text="Cancel", width=10, font=("Helvetica", 14), command=self.cancel)
+        w.pack(side=LEFT, padx=5, pady=5)
+
+        self.bind("<Return>", self.ok)
+        self.bind("<Escape>", self.cancel)
+
+        box.pack()
+
+    def apply(self):
+        self.player1 = self.player1_entry.get()
+        self.player2 = self.player2_entry.get()
 
 # Checkers game logic
 class Checkers:
@@ -22,10 +74,9 @@ class Checkers:
                     board[i][j] = 'r'
         for i in range(5, 8):
             for j in range(8):
-                if (i + j) % 2 == 1:
+                if (i + j) % 2 == 2:
                     board[i][j] = 'b'
         return board
-
     def print_board(self):
         for row in self.board:
             print(' '.join(row))
@@ -97,6 +148,7 @@ class Checkers:
         if abs(ex - sx) == 2 and abs(ey - sy) == 2:
             mid_x, mid_y = (sx + ex) // 2, (sy + ey) // 2
             self.board[mid_x][mid_y] = ' '
+            capture_sound.play()
 
         self.board[ex][ey] = self.board[sx][sy]
         self.board[sx][sy] = ' '
@@ -104,13 +156,58 @@ class Checkers:
         self.check_king(ex, ey)
 
         self.current_turn = 'b' if self.current_turn == 'r' else 'r'
+        self.check_game_over()
+    
         return True
 
     def check_king(self, x, y):
         if self.board[x][y] == 'r' and x == 7:
             self.board[x][y] = 'R'
+            make_king_sound.play()
         elif self.board[x][y] == 'b' and x == 0:
             self.board[x][y] = 'B'
+            king_sound.play()
+
+    def check_winner(self):
+        r_pieces = sum(row.count('r') + row.count('R') for row in self.board)
+        b_pieces = sum(row.count('b') + row.count('B') for row in self.board)
+    
+        if r_pieces == 0:
+            print(r_pieces)
+            return 'Black'
+        elif b_pieces == 0:
+            return 'Red'
+        
+        if not (self.get_valid_moves((x, y)) for x in range(8) for y in range(8) if self.board[x][y].lower() == 'r'):
+            print(True)
+            return 'Black'
+        if not (self.get_valid_moves((x, y)) for x in range(8) for y in range(8) if self.board[x][y].lower() == 'b'):
+            return 'Red'
+        
+        return None
+
+    def check_draw(self):
+        r_moves = any(self.get_valid_moves((x, y)) for x in range(8) for y in range(8) if self.board[x][y].lower() == 'r')
+        b_moves = any(self.get_valid_moves((x, y)) for x in range(8) for y in range(8) if self.board[x][y].lower() == 'b')
+
+        if not r_moves and not b_moves:
+            return True
+        return False
+
+    def check_game_over(self):
+        winner = self.check_winner()
+        if winner:
+            self.show_game_over_screen(winner)
+        elif self.check_draw():
+            self.show_game_over_screen("draw")
+            
+
+    def show_game_over_screen(self, winner):
+        sound.play()
+        board_state = json.dumps(self.board)
+        subprocess.Popen(["python", r"C:\Users\nalin\OneDrive\Desktop\Checkers\ending.py", str(winner), board_state])
+
+
 
 # GUI for the Checkers game
 def help():
@@ -125,10 +222,11 @@ blockade them. If neither player can accomplish the above, the game is a draw.''
     messagebox.showinfo("Help", help_text)
 
 class Board(tk.Frame):
-    def __init__(self, parent, game, length, width, background_color, border_thickness, border_color):
+    def __init__(self, parent, game, update_turn_display, length, width, background_color, border_thickness, border_color):
         tk.Frame.__init__(self, parent)
         self.parent = parent
         self.game = game
+        self.update_turn_display = update_turn_display
         self.length = length
         self.width = width
         self.background_color = background_color
@@ -165,10 +263,10 @@ class Board(tk.Frame):
                 self.squares.setdefault(pos, B)
     
     def load_piece_images(self):
-        self.white_image = Image.open(r"D:\Hitha\Checkers\Checkers\white_piece.png")  # Ensure the path is correct
-        self.black_image = Image.open(r"D:\Hitha\Checkers\Checkers\black_piece.png")  # Ensure the path is correct
-        self.white_king_image = Image.open(r"D:\Hitha\Checkers\Checkers\crown.png")  # Ensure the path is correct
-        self.black_king_image = Image.open(r"D:\Hitha\Checkers\Checkers\crown.png")  # Ensure the path is correct
+        self.white_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\white_image_e.png")
+        self.black_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\black_image_e.png")
+        self.white_king_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\wking.jpeg")
+        self.black_king_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\bking.jpeg")  
 
         self.white_image = self.white_image.resize((80, 80), Image.LANCZOS)
         self.black_image = self.black_image.resize((80, 80), Image.LANCZOS)
@@ -199,11 +297,12 @@ class Board(tk.Frame):
                         self.squares[pos].config(image=self.white_king_image, width=80, height=80)
                         self.squares[pos].image = self.white_king_image
                     else:
-                        self.squares[pos].config(image='', width=11, height=5)  # Clear previous piece image
+                        self.squares[pos].config(image='', width=11, height=5)  
                 else:
-                    self.squares[pos].config(width=11, height=5)  # Set default size
+                    self.squares[pos].config(width=11, height=5)  
 
     def select_square(self, x, y):
+        button_sound.play()
         if self.selected_piece:
             if (x, y) in self.valid_moves:
                 if self.game.move_piece(self.selected_piece, (x, y)):
@@ -211,6 +310,7 @@ class Board(tk.Frame):
                     self.selected_piece = None
                     self.valid_moves = []
                     self.place_pieces()
+                    self.update_turn_display()
             else:
                 self.clear_highlights()
                 self.selected_piece = None
@@ -232,52 +332,88 @@ class Board(tk.Frame):
     def get_square_color(self, x, y):
         return "tan4" if (x + y) % 2 == 0 else "burlywood1"
 
+
 # Main application
 class CheckersApp(tk.Tk):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, player1, player2):
+        tk.Tk.__init__(self)
+        self.player1 = player1
+        self.player2 = player2
         self.title("Checkers Game")
-        self.create_background()  # New method to create the background
-        self.create_buttons()  # New method to create buttons
+        self.create_turn_display()
+        self.create_background()
+        self.create_side_buttons()
         self.game = Checkers()
-        self.board = Board(self.canvas, self.game, 8, 8, "light grey", 5, "black")  # Pass canvas as parent
+        self.board = Board(self.canvas, self.game, self.update_turn_display, 8, 8, "light grey", 5, "black")
 
     def create_background(self):
-        # Load the background image
-        self.bg_image = Image.open("D:\\Hitha\\Checkers\\Checkers\\background1.png")  # Ensure the path is correct
+        self.bg_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\background.jpg")
         self.bg_image = self.bg_image.resize((self.winfo_screenwidth(), self.winfo_screenheight()), Image.LANCZOS)
         self.bg_photo = ImageTk.PhotoImage(self.bg_image)
 
-        # Create a canvas to display the background image
         self.canvas = tk.Canvas(self, width=self.winfo_screenwidth(), height=self.winfo_screenheight())
         self.canvas.pack(fill="both", expand=True)
-
-        # Place the background image on the canvas
         self.canvas.create_image(0, 0, image=self.bg_photo, anchor="nw")
 
-    def create_buttons(self):
-        # Add buttons for help, restart, and exit to the main window
-        top_frame = Frame(self.canvas, bg="lightgrey")
-        top_frame.pack(side=tk.TOP)
-        self.canvas.create_window((0, 0), window=top_frame, anchor="nw")
+    def create_side_buttons(self):
+        button_frame = Frame(self.canvas, bg = "#80471C")
+        button_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=10, pady=10)
+        self.canvas.create_window((self.winfo_screenwidth(), 0), window=button_frame, anchor="ne")
 
-        restart_button = Button(top_frame, fg="blue", text="Restart", command=self.restart_game)
-        restart_button.pack(side=tk.LEFT)
+        restart_button = Button(button_frame, fg="yellow",bg = "black",text="Restart",font=('Verdana', 16, 'bold'),  width=10, height=4, command=self.restart_game)
+        restart_button.pack(side=tk.TOP, pady=5)
 
-        help_button = Button(top_frame, fg="blue", text="Help", command=help)
-        help_button.pack(side=tk.LEFT)
+        help_button = Button(button_frame, fg="yellow",bg = "black", text="Help",font=('Verdana', 16, 'bold'),  width=10, height=4, command=help)
+        help_button.pack(side=tk.TOP, pady=5)
 
-        exit_button = Button(top_frame, fg="red", text="Exit", command=self.quit)
-        exit_button.pack(side=tk.RIGHT)
+        exit_button = Button(button_frame, fg="yellow", bg = "black", text="Exit",font=('Verdana', 16, 'bold'),  width=10, height=4, command=self.quit)
+        exit_button.pack(side=tk.TOP, pady=5)
+
+    def update_turn_display(self):
+        current_player = self.player1 if self.game.current_turn == 'r' else self.player2
+        color = "White" if self.game.current_turn == 'r' else "Black"
+        self.turn_label.config(text=f"Current Turn: {current_player} ({color})")
 
     def restart_game(self):
         self.board.destroy()
         self.game = Checkers()
-        self.board = Board(self.canvas, self.game, 8, 8, "light grey", 5, "black")  # Pass canvas as parent
+        self.board = Board(self.canvas, self.game, self.update_turn_display, 8, 8, "light grey", 5, "black")
+        self.update_turn_display()
 
-# GUI for the Checkers game (your existing Board class here)
+    def create_turn_display(self):
+        self.turn_frame = tk.Frame(self, bg="#80471C")
+        self.turn_frame.pack(side="top", fill="x")
+        self.turn_label = tk.Label(self.turn_frame, text=f"Current Turn: {self.player1} (White)", font=('Verdana', 16, 'bold'), bg="#80471C", fg="yellow")
+        self.turn_label.pack()
 
-# Main application
-if __name__ == "__main__":
-    app = CheckersApp()
+
+
+def main():
+    sound.play()
+    new_root = tk.Tk()
+    new_root.title("Checkers")
+    new_root.minsize(1600, 900)
+    image_path = r"C:\Users\nalin\OneDrive\Desktop\Checkers\background.jpg"
+    image = Image.open(image_path)
+    new_width = 1600
+    new_height = 900
+    resized_image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+    photo = ImageTk.PhotoImage(resized_image)
+
+    image_label = tk.Label(new_root, image=photo)
+    image_label.place(x=0, y=0)
+
+    dialog = PlayerDialog(new_root, title="Enter Player Names")
+    player1 = dialog.player1
+    player2 = dialog.player2
+
+    print("Player 1:", player1)
+    print("Player 2:", player2)
+
+    #new_root.mainloop()
+    new_root.destroy()
+
+    app = CheckersApp(player1, player2)
     app.mainloop()
+    
+main()

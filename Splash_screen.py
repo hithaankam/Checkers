@@ -8,7 +8,7 @@ def start_button_clicked():
 
 def run_source_code():
     try:
-        subprocess.Popen(["python", "D:\Hitha\Checkers\Checkers\sourceCode.py"])
+        subprocess.Popen(["python", r"D:\Hitha\Checkers\Checkers\sourceCode.py"])
         new_root.after(100, close_welcome_page)
     except Exception as e:
         print("An error occurred while running the source code:", e)
@@ -21,7 +21,7 @@ new_root.title("CHECKERS")
 new_root.configure(bg='grey')
 new_root.minsize(1500, 1000)
 
-image_path = "D:\\Hitha\\Checkers\\Checkers\\welcome_image.png"
+image_path = r"D:\Hitha\Checkers\Checkers\welcome_image.jpg"
 image = Image.open(image_path)
 new_width = 1600
 new_height = 900
@@ -44,6 +44,6 @@ start_button = tk.Button(
     bg='black', 
     fg='red' 
 )
-start_button.place(x=600, y=600)
+start_button.place(x=600, y=700)
 
 new_root.mainloop()
