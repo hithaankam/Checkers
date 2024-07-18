@@ -9,10 +9,10 @@ import json
 
 pygame.mixer.init()
 
-button_sound = pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\button-click_sound.mp3")
-capture_sound = pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\killing_sound.mp3")
-king_sound = pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\making_king_sound.wav")
-sound=pygame.mixer.Sound(r"C:\Users\nalin\OneDrive\Desktop\Checkers\sound.wav")
+button_sound = pygame.mixer.Sound(r"D:\Hitha\Checkers\Checkers\button-click_sound.mp3")
+capture_sound = pygame.mixer.Sound(r"D:\Hitha\Checkers\Checkers\killing_sound.mp3")
+king_sound = pygame.mixer.Sound(r"D:\Hitha\Checkers\Checkers\making_king_sound.wav")
+sound=pygame.mixer.Sound(r"D:\Hitha\Checkers\Checkers\sound.wav")
 class PlayerDialog(simpledialog.Dialog):
     def body(self, master):
         dialog_width = 500 
@@ -54,7 +54,6 @@ class PlayerDialog(simpledialog.Dialog):
         self.player1 = self.player1_entry.get()
         self.player2 = self.player2_entry.get()
 
-# Checkers game logic
 class Checkers:
     def __init__(self):
         self.board = self.initialize_board()
@@ -74,7 +73,7 @@ class Checkers:
                     board[i][j] = 'r'
         for i in range(5, 8):
             for j in range(8):
-                if (i + j) % 2 == 2:
+                if (i + j) % 2 == 1:
                     board[i][j] = 'b'
         return board
     def print_board(self):
@@ -103,7 +102,7 @@ class Checkers:
             if (ex, ey) == (sx + direction[0], sy + direction[1]):
                 return True
 
-        # Check for captures
+
         for direction in valid_directions:
             mid_x, mid_y = sx + direction[0], sy + direction[1]
             end_x, end_y = sx + 2 * direction[0], sy + 2 * direction[1]
@@ -126,7 +125,7 @@ class Checkers:
             if 0 <= ex < 8 and 0 <= ey < 8 and self.is_valid_move(start, (ex, ey)):
                 valid_moves.append((ex, ey))
 
-            # Check for captures
+
             ex, ey = sx + 2 * direction[0], sy + 2 * direction[1]
             if 0 <= ex < 8 and 0 <= ey < 8 and self.is_valid_move(start, (ex, ey)):
                 valid_moves.append((ex, ey))
@@ -163,7 +162,7 @@ class Checkers:
     def check_king(self, x, y):
         if self.board[x][y] == 'r' and x == 7:
             self.board[x][y] = 'R'
-            make_king_sound.play()
+            king_sound.play()
         elif self.board[x][y] == 'b' and x == 0:
             self.board[x][y] = 'B'
             king_sound.play()
@@ -205,7 +204,7 @@ class Checkers:
     def show_game_over_screen(self, winner):
         sound.play()
         board_state = json.dumps(self.board)
-        subprocess.Popen(["python", r"C:\Users\nalin\OneDrive\Desktop\Checkers\ending.py", str(winner), board_state])
+        subprocess.Popen(["python", r"D:\Hitha\Checkers\Checkers\ending.py", str(winner), board_state])
 
 
 
@@ -263,10 +262,10 @@ class Board(tk.Frame):
                 self.squares.setdefault(pos, B)
     
     def load_piece_images(self):
-        self.white_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\white_image_e.png")
-        self.black_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\black_image_e.png")
-        self.white_king_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\wking.jpeg")
-        self.black_king_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\bking.jpeg")  
+        self.white_image = Image.open(r"D:\Hitha\Checkers\Checkers\white_piece_e.png")
+        self.black_image = Image.open(r"D:\Hitha\Checkers\Checkers\black_piece_e.png")
+        self.white_king_image = Image.open(r"D:\Hitha\Checkers\Checkers\white_king_image.jpg")
+        self.black_king_image = Image.open(r"D:\Hitha\Checkers\Checkers\black king.png")  
 
         self.white_image = self.white_image.resize((80, 80), Image.LANCZOS)
         self.black_image = self.black_image.resize((80, 80), Image.LANCZOS)
@@ -333,7 +332,6 @@ class Board(tk.Frame):
         return "tan4" if (x + y) % 2 == 0 else "burlywood1"
 
 
-# Main application
 class CheckersApp(tk.Tk):
     def __init__(self, player1, player2):
         tk.Tk.__init__(self)
@@ -347,7 +345,7 @@ class CheckersApp(tk.Tk):
         self.board = Board(self.canvas, self.game, self.update_turn_display, 8, 8, "light grey", 5, "black")
 
     def create_background(self):
-        self.bg_image = Image.open(r"C:\Users\nalin\OneDrive\Desktop\Checkers\background.jpg")
+        self.bg_image = Image.open(r"D:\Hitha\Checkers\Checkers\background1.jpg")
         self.bg_image = self.bg_image.resize((self.winfo_screenwidth(), self.winfo_screenheight()), Image.LANCZOS)
         self.bg_photo = ImageTk.PhotoImage(self.bg_image)
 
@@ -393,7 +391,7 @@ def main():
     new_root = tk.Tk()
     new_root.title("Checkers")
     new_root.minsize(1600, 900)
-    image_path = r"C:\Users\nalin\OneDrive\Desktop\Checkers\background.jpg"
+    image_path = r"D:\Hitha\Checkers\Checkers\background1.jpg"
     image = Image.open(image_path)
     new_width = 1600
     new_height = 900
